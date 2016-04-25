@@ -13,8 +13,7 @@ import os
 """
 Commande a lancer pour pouvoir donner des arguments au scripts
 """
-#./Interpolation_listrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm' 'stereo' 'Prod15_5' 'triplegauss'
-#%run Interpolation_listrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm_north_stereo_Prod15_5' 'triplegauss'
+#./Interpolation_perrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm' 'stereo' 'Prod15_5' 'triplegauss' 23526
 
 
 
@@ -126,9 +125,8 @@ def gauss(x,sigma, mean):
 PathListRun = sys.argv[1]
 
 #ListRunDirectory = glob(PathListRun+'/run*.fits')
-#RunNumber = [file.split('/')[-1][5:11] for file in ListRunDirectory]
-#RunNumber = np.loadtxt("runlist.list")
-RunNumber = np.loadtxt("Crab_test.list")
+
+nrun = sys.argv[6]
 
 #Load les info sur les MCs depuis la table d'IRF ou est stocke pour toutes les nergies, zenith,offset et efficacite des MCs la valeur des la surface efficiace, du biais et sigma pour la resolution et du s1, s2, s3, A2, A3 de la tripplegauss utilisee pour fitter la psf
 PathTableIRF="/Users/jouvin/Desktop/these/WorkGAMMAPI/IRF/Brunoconfig/output_4Dnumpyarrays"
@@ -139,15 +137,15 @@ tels_mode=sys.argv[3]
 prod =sys.argv[4]
 PSFtype=sys.argv[5]
 
-for nrun in RunNumber[:,0]:
-    obs = Observation(int(nrun))
-    informat="old"
-    namerun=str(Path(PathListRun) / obs.filename('events', format=informat))
-    try:
-        table = Table.read(namerun, hdu='EVENTS')
-    except Exception:
-        print "fits corrupted for file "+namerun
-        continue
+
+obs = Observation(int(nrun))
+informat="old"
+namerun=str(Path(PathListRun) / obs.filename('events', format=informat))
+try:
+    table = Table.read(namerun, hdu='EVENTS')
+except Exception:
+    print "fits corrupted for file "+namerun
+else:
     hdurun=pyfits.open(namerun)
     AltRun=hdurun[1].header["ALT_PNT"]
     if((AltRun>90)  & (AltRun<270)):
@@ -215,7 +213,7 @@ for nrun in RunNumber[:,0]:
         PSFS3Run=np.zeros((binoffMC,binEMC))
         PSFA2Run=np.zeros((binoffMC,binEMC))
         PSFA3Run=np.zeros((binoffMC,binEMC))
-    
+
     for (iEMC,EMC) in enumerate(enMC):
         for (ioff, off) in enumerate(offMC):
             #print ioff, " ", iEMC
@@ -228,13 +226,13 @@ for nrun in RunNumber[:,0]:
             ResolRun[ioff, : ,iEMC]=gauss(lnEtrue_reco,SigmaRun,BiaisRun)
             #etre sur que c est bien normalise
             norm=np.sum(ResolRun[ioff, : ,iEMC]*(E_true_reco_hi-E_true_reco_low))            
-            
+
             if(np.isnan(norm)):
                 ResolRun[ioff, : ,iEMC]=0
             else:
                 ResolRun[ioff, : ,iEMC]=ResolRun[ioff, : ,iEMC]/norm
-                
-            
+
+
             if (PSFtype == "triplegauss"):
                 ind_zen, ind_eff= np.where(PSFs1[iEMC, ioff, :, :] != -1)
                 #If there is at least one simu for this offset and this energy for wich the fit works
@@ -250,23 +248,23 @@ for nrun in RunNumber[:,0]:
                         PSFS1Run[ioff, iEMC] = interpolate.griddata(points, PSFs1[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='linear')
                         if np.isnan(PSFS1Run[ioff, iEMC]):
                             PSFS1Run[ioff, iEMC] = interpolate.griddata(points, PSFs1[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='nearest')
-                            
+
                         PSFS2Run[ioff, iEMC] = interpolate.griddata(points, PSFs2[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='linear')
                         if np.isnan(PSFS2Run[ioff, iEMC]):
                             PSFS2Run[ioff, iEMC] = interpolate.griddata(points, PSFs2[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='nearest')
-                            
+
                         PSFS3Run[ioff, iEMC] = interpolate.griddata(points, PSFs3[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='linear')
                         if np.isnan(PSFS3Run[ioff, iEMC]):
                             PSFS3Run[ioff, iEMC] = interpolate.griddata(points, PSFs3[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='nearest')
-                            
+
                         PSFA2Run[ioff, iEMC] = interpolate.griddata(points, PSFA2[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='linear')
                         if np.isnan(PSFA2Run[ioff, iEMC]):
                             PSFA2Run[ioff, iEMC] = interpolate.griddata(points, PSFA2[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='nearest')
-                            
+
                         PSFA3Run[ioff, iEMC] = interpolate.griddata(points, PSFA3[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='linear')
                         if np.isnan(PSFA3Run[ioff, iEMC]):
                             PSFS1Run[ioff, iEMC] = interpolate.griddata(points, PSFA3[iEMC, ioff, ind_zen, ind_eff], (EffRun,np.cos(ZenRun * math.pi / 180)), method='nearest')
-                       
+
                     else:
                         PSFS1Run[ioff, iEMC] = -1
                         PSFS2Run[ioff, iEMC] = -1
@@ -279,9 +277,9 @@ for nrun in RunNumber[:,0]:
                     PSFS3Run[ioff, iEMC] = -1
                     PSFA2Run[ioff, iEMC] = -1
                     PSFA3Run[ioff, iEMC] = -1
-    
-                       
-    
+
+
+
     outdir =  str(Path(PathListRun) / obs.folder())            
     #Ecriture des fichiers fits pour aeff, edisp et psf pour chaque observation
     #AEFF FITS FILE
@@ -308,7 +306,7 @@ for nrun in RunNumber[:,0]:
         os.remove(outdir + '/hess_aeff_2d_'+str(int(nrun))+'.fits') 
     if Path(outdir + '/hess_aeff_2d_0'+str(int(nrun))+'.fits').exists():
         os.remove(outdir + '/hess_aeff_2d_0'+str(int(nrun))+'.fits')
-        
+
     #EDISP FITS FILE
     c1_resol = Column(name='ETRUE_LO', format=str(binEMC)+'E', unit='TeV', array=np.atleast_2d(E_true_low))
     c2_resol = Column(name='ETRUE_HI', format=str(binEMC)+'E', unit='TeV', array=np.atleast_2d(E_true_up))
@@ -321,7 +319,7 @@ for nrun in RunNumber[:,0]:
     for i in range(1,8):
         tbhdu_resol.header.comments['TTYPE'+str(i)]='label for field '+str(i)
         tbhdu_resol.header.comments['TFORM'+str(i)]='data format of field: 4-byte REAL'
-#        tbhdu_resol.header.comments['TUNIT'+str(i)]='physical unit of field '
+    #        tbhdu_resol.header.comments['TUNIT'+str(i)]='physical unit of field '
 
     tbhdu_resol.header.set("EXTNAME","EDISP_2D", "name of this binary table extension ")
     tbhdu_resol.header.set("TDIM7","("+str(binEMC)+","+str(binEreco)+","+str(binoffMC)+")")
