@@ -12,7 +12,7 @@ import os
 """
 Commande a lancer pour pouvoir donner des arguments au scripts
 """
-#%run Interpolation_listrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm_south_stereo_Prod15_5' 'triplegauss'
+#
 #%run Interpolation_listrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm_north_stereo_Prod15_5' 'triplegauss'
 
 
@@ -135,6 +135,7 @@ PathTablePSF="/Users/jouvin/Desktop/these/WorkGAMMAPI/IRF/Brunoconfig/output_4Dn
 
 coupure=sys.argv[2]
 PSFtype=sys.argv[3]
+print PathTableIRF+"/IRF_"+coupure+".npz"
 IRF=np.load(PathTableIRF+"/IRF_"+coupure+".npz")
 IRFArea=IRF["TableArea"]
 IRFSigma=IRF["TableSigma"]
