@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 import numpy as np
 import pyfits
 from astropy.table import Table
@@ -13,7 +12,7 @@ import os
 """
 Commande a lancer pour pouvoir donner des arguments au scripts
 """
-#./Interpolation_listrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm' 'stereo' 'Prod15_5' 'triplegauss'
+#%run Interpolation_listrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm_south_stereo_Prod15_5' 'triplegauss'
 #%run Interpolation_listrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm_north_stereo_Prod15_5' 'triplegauss'
 
 
@@ -135,9 +134,61 @@ PathTableIRF="/Users/jouvin/Desktop/these/WorkGAMMAPI/IRF/Brunoconfig/output_4Dn
 PathTablePSF="/Users/jouvin/Desktop/these/WorkGAMMAPI/IRF/Brunoconfig/output_4Dnumpyarrays"
 
 coupure=sys.argv[2]
-tels_mode=sys.argv[3]
-prod =sys.argv[4]
-PSFtype=sys.argv[5]
+PSFtype=sys.argv[3]
+IRF=np.load(PathTableIRF+"/IRF_"+coupure+".npz")
+IRFArea=IRF["TableArea"]
+IRFSigma=IRF["TableSigma"]
+IRFBiais=IRF["TableBiais"]
+enMC=IRF["enMC"]
+lnenMC=IRF["lnenMC"]
+zenMC=IRF["zenMC"]
+effMC=IRF["effMC"]
+offMC=IRF["offMC"]
+if(PSFtype=="triplegauss"):
+    PSF=np.load(PathTablePSF+"/PSF_triplegauss_"+coupure+".npz")
+    PSFs1=PSF["TableSigma1"]
+    PSFs2=PSF["TableSigma2"]
+    PSFs3=PSF["TableSigma3"]
+    PSFA2=PSF["TableA2"]
+    PSFA3=PSF["TableA3"]
+elif(PSFtype=="king"):
+    PSF=np.load(PathTablePSF+"/PSF_king_"+coupure+".npz")
+    PSFSig=PSF["TableSig"]
+    PSFGam=PSF["TableGam"]
+else:
+    print "No function given for the PSF"
+
+binoffMC=len(offMC)
+binEMC=len(enMC)
+binEreco=50
+bineffarea=len(offMC)*len(enMC)
+bineffresol=len(offMC)*len(enMC)*binEreco
+
+#reverifier qu ils ont bien ca dans leur bin PA en low edge et upper edge
+off_low=offMC
+off_hi=offMC
+
+#pour les extremites prendre le milieu des bin en log
+binlnEMC=lnenMC[1:]-lnenMC[:-1]
+#Pour le premier bin en energie pour defenr le edge low du bin on prend la demilargeur du premier bin
+binlnEMClow=np.insert(binlnEMC,0,binlnEMC[0])
+#Pour le dernier bin en energie pour defenr le edge up du bin on prend la demilargeur du dernier bin
+binlnEMCup=np.insert(binlnEMC,-1,binlnEMC[-1])
+#Retrouver
+lnEMClow=lnenMC-binlnEMClow/2
+lnEMCup=lnenMC+binlnEMCup/2
+E_true_low=pow(10,lnEMClow)
+E_true_up=pow(10,lnEMCup)
+
+#Definition de Etrue/Ereco
+lnEtrue_reco=np.linspace(-1,1,binEreco)
+#Le tableau d energie reco en log ont tous la meme largeur de bin donc on prend le premier
+binlnEtrue_reco=lnEtrue_reco[1]-lnEtrue_reco[0]
+lnE_true_reco_low=lnEtrue_reco-binlnEtrue_reco/2
+lnE_true_reco_up=lnEtrue_reco+binlnEtrue_reco/2
+Etrue_reco=pow(10,lnEtrue_reco)
+E_true_reco_low=pow(10,lnE_true_reco_low)
+E_true_reco_hi=pow(10,lnE_true_reco_up)
 
 for nrun in RunNumber[:,0]:
     obs = Observation(int(nrun))
@@ -148,74 +199,23 @@ for nrun in RunNumber[:,0]:
     except Exception:
         print "fits corrupted for file "+namerun
         continue
-    hdurun=pyfits.open(namerun)
-    AltRun=hdurun[1].header["ALT_PNT"]
-    if((AltRun>90)  & (AltRun<270)):
-        mode="south"
-    else:
-        mode="north"
-    ZenRun=90-AltRun
-    EffRun=hdurun[1].header["MUONEFF"]*100
-    IRF=np.load(PathTableIRF+"/IRF_"+coupure+"_"+mode+"_"+tels_mode+"_"+prod+".npz")
-    IRFArea=IRF["TableArea"]
-    IRFSigma=IRF["TableSigma"]
-    IRFBiais=IRF["TableBiais"]
-    enMC=IRF["enMC"]
-    lnenMC=IRF["lnenMC"]
-    zenMC=IRF["zenMC"]
-    effMC=IRF["effMC"]
-    offMC=IRF["offMC"]
-    if(PSFtype=="triplegauss"):
-        PSF=np.load(PathTablePSF+"/PSF_triplegauss_"+coupure+"_"+mode+"_"+tels_mode+"_"+prod+".npz")
-        PSFs1=PSF["TableSigma1"]
-        PSFs2=PSF["TableSigma2"]
-        PSFs3=PSF["TableSigma3"]
-        PSFA2=PSF["TableA2"]
-        PSFA3=PSF["TableA3"]
-    else:
-        print "No function given for the PSF"
-
-    binoffMC=len(offMC)
-    binEMC=len(enMC)
-    binEreco=50
-    bineffarea=len(offMC)*len(enMC)
-    bineffresol=len(offMC)*len(enMC)*binEreco
-
-    #reverifier qu ils ont bien ca dans leur bin PA en low edge et upper edge
-    off_low=offMC
-    off_hi=offMC
-
-    #pour les extremites prendre le milieu des bin en log
-    binlnEMC=lnenMC[1:]-lnenMC[:-1]
-    #Pour le premier bin en energie pour defenr le edge low du bin on prend la demilargeur du premier bin
-    binlnEMClow=np.insert(binlnEMC,0,binlnEMC[0])
-    #Pour le dernier bin en energie pour defenr le edge up du bin on prend la demilargeur du dernier bin
-    binlnEMCup=np.insert(binlnEMC,-1,binlnEMC[-1])
-    #Retrouver
-    lnEMClow=lnenMC-binlnEMClow/2
-    lnEMCup=lnenMC+binlnEMCup/2
-    E_true_low=pow(10,lnEMClow)
-    E_true_up=pow(10,lnEMCup)
-
-    #Definition de Etrue/Ereco
-    lnEtrue_reco=np.linspace(-1,1,binEreco)
-    #Le tableau d energie reco en log ont tous la meme largeur de bin donc on prend le premier
-    binlnEtrue_reco=lnEtrue_reco[1]-lnEtrue_reco[0]
-    lnE_true_reco_low=lnEtrue_reco-binlnEtrue_reco/2
-    lnE_true_reco_up=lnEtrue_reco+binlnEtrue_reco/2
-    Etrue_reco=pow(10,lnEtrue_reco)
-    E_true_reco_low=pow(10,lnE_true_reco_low)
-    E_true_reco_hi=pow(10,lnE_true_reco_up)
-
+    
     AreaRun=np.zeros((binoffMC,binEMC))
-    ResolRun=np.zeros((binoffMC,binEreco,binEMC))
     if(PSFtype=="triplegauss"):
         PSFS1Run=np.zeros((binoffMC,binEMC))
         PSFS2Run=np.zeros((binoffMC,binEMC))
         PSFS3Run=np.zeros((binoffMC,binEMC))
         PSFA2Run=np.zeros((binoffMC,binEMC))
         PSFA3Run=np.zeros((binoffMC,binEMC))
+    elif(PSFtype=="king"):
+        PSFSigRun=np.zeros((binoffMC,binEMC))
+        PSFGamRun=np.zeros((binoffMC,binEMC))
     
+    ResolRun=np.zeros((binoffMC,binEreco,binEMC))
+    #namerun = "run_0"+nrun+"_std_north_1b_eventlist.fits"
+    hdurun=pyfits.open(namerun)
+    ZenRun=90-hdurun[1].header["ALT_PNT"]
+    EffRun=hdurun[1].header["MUONEFF"]*100
     for (iEMC,EMC) in enumerate(enMC):
         for (ioff, off) in enumerate(offMC):
             #print ioff, " ", iEMC
@@ -279,9 +279,15 @@ for nrun in RunNumber[:,0]:
                     PSFS3Run[ioff, iEMC] = -1
                     PSFA2Run[ioff, iEMC] = -1
                     PSFA3Run[ioff, iEMC] = -1
-    
-                       
-    
+            elif (PSFtype == "king"):
+                if(len(ind_zen)>4):
+                    if((len(zensame[0])!=0) & (len(effsame[0])!=0)):
+                        PSFSigRun[ioff, iEMC] = InterSig(EffRun, np.cos(ZenRun * math.pi / 180))
+                        PSFGamRun[ioff, iEMC] = InterGam(EffRun, np.cos(ZenRun * math.pi / 180))
+                    else:
+                        PSFSigRun[ioff, iEMC] = -1
+                        PSFGamRun[ioff, iEMC] = -1
+                
     outdir =  str(Path(PathListRun) / obs.folder())            
     #Ecriture des fichiers fits pour aeff, edisp et psf pour chaque observation
     #AEFF FITS FILE
@@ -345,6 +351,10 @@ for nrun in RunNumber[:,0]:
         c9_psf = Column(name='SIGMA_3', format=str(bineffarea)+'E', unit='deg', array=np.expand_dims(PSFS3Run,0))
         c10_psf = Column(name='SCALE', format=str(bineffarea)+'E', unit='', array=np.expand_dims(1/norm,0))
         tbhdu_psf = pyfits.BinTableHDU.from_columns([c1_psf, c2_psf, c3_psf, c4_psf, c5_psf, c6_psf, c7_psf, c8_psf, c9_psf, c10_psf]) 
+    elif(PSFtype=="king"):
+        c5_psf = Column(name='GAMMA', format=str(bineffarea)+'E', unit='', array=np.expand_dims(PSFGamRun,0))
+        c5_psf = Column(name='SIGMA', format=str(bineffarea)+'E', unit='deg', array=np.expand_dims(PSFSigRun,0))
+        tbhdu_psf = pyfits.BinTableHDU.from_columns([c1_psf,c2_psf,c3_psf,c4_psf,c5_psf])      
     tbhdu_psf.header.set("EXTNAME","PSF_2D", "name of this binary table extension ")
     tbhdu_psf.writeto(outdir + '/psf_3gauss_0'+str(int(nrun))+'.fits', clobber=True)
     if Path(outdir + '/hess_psf_3gauss_'+str(int(nrun))+'.fits').exists():
