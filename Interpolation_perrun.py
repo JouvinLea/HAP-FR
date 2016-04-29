@@ -11,9 +11,9 @@ from glob import glob
 
 """
 Script that interpolates the area, edisp and the psf on the zenith and muon efficiency of each run.
-You have to give the configuration, the prod and the run number
+You have to give the configuration, the analysis name, the run number and the dst prod
 """
-#./Interpolation_perrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm_stereo' 'Prod15_5' 23526
+#./Interpolation_perrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm_north_stereo_Prod15_5' 23526 "Prod15_4_stereo" 
 
 
 class Observation:
@@ -86,15 +86,16 @@ def gauss(x,sigma, mean):
 
 
 
-PathListRun = sys.argv[1]
+
 
 #Load the MCs information from the IRF table where is stored for each MC energy, zenith, offset and efficiency, the value of the surface area, the biais and the sigma for the resolution and the s1,s2,s3,A2, A3 for the tripple gauss used to fit the PSF
 PathTableIRF=os.path.expandvars('$HESSCONFIG')
 PathTablePSF=os.path.expandvars('$HESSCONFIG')
 
-coupure=sys.argv[2]
-prod =sys.argv[3]
-nrun=sys.argv[4]
+PathListRun = sys.argv[1]
+config=sys.argv[2]
+nrun=sys.argv[3]
+dstprod=sys.argv[4]
 
 obs = Observation(int(nrun))
 informat="old"
@@ -106,14 +107,9 @@ except Exception:
 else:
     hdurun=pyfits.open(namerun)
     AltRun=hdurun[1].header["ALT_PNT"]
-    if((AltRun>90)  & (AltRun<270)):
-        mode="south"
-    else:
-        mode="north"
     ZenRun=90-AltRun
     EffRun=hdurun[1].header["MUONEFF"]*100
-    name_config=coupure[0:3]+"_"+mode+"_"+coupure[4:10]+"_"+prod
-    IRF=np.load(PathTableIRF+"/"+name_config+"/IRF_"+name_config+".npz")
+    IRF=np.load(PathTableIRF+"/"+config+"/IRF_"+config+".npz")
     IRFArea=IRF["TableArea"]
     IRFSigma=IRF["TableSigma"]
     IRFBiais=IRF["TableBiais"]
@@ -123,7 +119,7 @@ else:
     effMC=IRF["effMC"]
     offMC=IRF["offMC"]
 
-    PSF=np.load(PathTablePSF+"/"+name_config+"/PSF_triplegauss_"+name_config+".npz")
+    PSF=np.load(PathTablePSF+"/"+config+"/PSF_triplegauss_"+config+".npz")
     PSFs1=PSF["TableSigma1"]
     PSFs2=PSF["TableSigma2"]
     PSFs3=PSF["TableSigma3"]
