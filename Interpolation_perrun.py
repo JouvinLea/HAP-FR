@@ -1,10 +1,12 @@
 #! /usr/bin/env python
 import numpy as np
-import pyfits
+from astropy.io import fits
+#import pyfits
 from astropy.table import Table
 from scipy import interpolate
 import math
-from pyfits import Column
+from astropy.io.fits import Column
+#from pyfits import Column
 import sys
 import os
 from glob import glob
@@ -94,10 +96,10 @@ PathTableIRF=os.path.expandvars('$HESSCONFIG')
 PathTablePSF=os.path.expandvars('$HESSCONFIG')
 
 
-config=sys.argv[1]
+analysis_name=sys.argv[1]
 nrun=sys.argv[2]
 dstprod=sys.argv[3]
-PathListRun = os.path.expandvars('$CALDB')+"/"+dstprod+'/'+config
+PathListRun = os.path.expandvars('$CALDB')+"/data/hess/"+os.path.expandvars('$HESSVERSION')+"/"+dstprod+'/'+analysis_name
 
 obs = Observation(int(nrun))
 informat="old"
@@ -107,11 +109,11 @@ try:
 except Exception:
     print "fits corrupted for file "+namerun
 else:
-    hdurun=pyfits.open(namerun)
+    hdurun=fits.open(namerun)
     AltRun=hdurun[1].header["ALT_PNT"]
     ZenRun=90-AltRun
     EffRun=hdurun[1].header["MUONEFF"]*100
-    IRF=np.load(PathTableIRF+"/"+config+"/IRF_"+config+".npz")
+    IRF=np.load(PathTableIRF+"/"+analysis_name+"/IRF_"+analysis_name+".npz")
     IRFArea=IRF["TableArea"]
     IRFSigma=IRF["TableSigma"]
     IRFBiais=IRF["TableBiais"]
@@ -121,7 +123,7 @@ else:
     effMC=IRF["effMC"]
     offMC=IRF["offMC"]
 
-    PSF=np.load(PathTablePSF+"/"+config+"/PSF_triplegauss_"+config+".npz")
+    PSF=np.load(PathTablePSF+"/"+analysis_name+"/PSF_triplegauss_"+analysis_name+".npz")
     PSFs1=PSF["TableSigma1"]
     PSFs2=PSF["TableSigma2"]
     PSFs3=PSF["TableSigma3"]
@@ -244,7 +246,7 @@ else:
     c4_area = Column(name='THETA_HI', format=str(binoffMC)+'E', unit='def', array=np.atleast_2d(off_hi))
     c5_area = Column(name='EFFAREA', format=str(bineffarea)+'E', unit='TeV', array=np.expand_dims(AreaRun,0))
     c6_area = Column(name='EFFAREA_RECO', format=str(bineffarea)+'E', unit='TeV', array=np.expand_dims(AreaRun,0))
-    tbhdu_area = pyfits.BinTableHDU.from_columns([c1_area,c2_area,c3_area,c4_area,c5_area,c6_area])
+    tbhdu_area = fits.BinTableHDU.from_columns([c1_area,c2_area,c3_area,c4_area,c5_area,c6_area])
     for i in range(1,7):
         tbhdu_area.header.comments['TTYPE'+str(i)]='label for field '+str(i)
         tbhdu_area.header.comments['TFORM'+str(i)]='data format of field: 4-byte REAL'
@@ -265,7 +267,7 @@ else:
     c5_resol = Column(name='THETA_LO', format=str(binoffMC)+'E', unit='deg', array=np.atleast_2d(off_low))
     c6_resol = Column(name='THETA_HI', format=str(binoffMC)+'E', unit='deg', array=np.atleast_2d(off_hi))
     c7_resol = Column(name='MATRIX ', format=str(bineffresol)+'E', unit='TeV', array=np.expand_dims(ResolRun,0))
-    tbhdu_resol = pyfits.BinTableHDU.from_columns([c1_resol,c2_resol,c3_resol,c4_resol,c5_resol,c6_resol,c7_resol])
+    tbhdu_resol = fits.BinTableHDU.from_columns([c1_resol,c2_resol,c3_resol,c4_resol,c5_resol,c6_resol,c7_resol])
     for i in range(1,8):
         tbhdu_resol.header.comments['TTYPE'+str(i)]='label for field '+str(i)
         tbhdu_resol.header.comments['TFORM'+str(i)]='data format of field: 4-byte REAL'
@@ -286,7 +288,7 @@ else:
     c8_psf = Column(name='AMPL_3', format=str(bineffarea)+'E', unit='', array=np.expand_dims(PSFA3Run,0))
     c9_psf = Column(name='SIGMA_3', format=str(bineffarea)+'E', unit='deg', array=np.expand_dims(PSFS3Run,0))
     c10_psf = Column(name='SCALE', format=str(bineffarea)+'E', unit='', array=np.expand_dims(1/norm,0))
-    tbhdu_psf = pyfits.BinTableHDU.from_columns([c1_psf, c2_psf, c3_psf, c4_psf, c5_psf, c6_psf, c7_psf, c8_psf, c9_psf, c10_psf]) 
+    tbhdu_psf = fits.BinTableHDU.from_columns([c1_psf, c2_psf, c3_psf, c4_psf, c5_psf, c6_psf, c7_psf, c8_psf, c9_psf, c10_psf]) 
     tbhdu_psf.header.set("EXTNAME","PSF_2D", "name of this binary table extension ")
     tbhdu_psf.writeto(outdir + '/psf_3gauss_0'+str(int(nrun))+'.fits', clobber=True)
     

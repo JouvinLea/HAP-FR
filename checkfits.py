@@ -6,7 +6,6 @@ import subprocess
 import os
 import shutil
 import hashlib
-import click
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
@@ -18,7 +17,7 @@ from glob import glob
 """
 Script to check the runwise fits file
 You have to give the runlist you want to check, the dst production and the analysis name
-./checkfits.py "GC_Lt2deg_PA.list" "Prod15_4_stereo" "elm_south_stereo_Prod15_5"
+./checkfits.py "GC_Lt2deg_PA.list" "Prod15_4_stereo" "elm_north_stereo_Prod15_5"
 """
 
 class Observation:
@@ -124,7 +123,6 @@ if __name__ == '__main__':
     dstprod=sys.argv[2]
     analysis_name=sys.argv[3]
     observation_list = ListObservations(runlist ,analysis_name)
-    #indir= "$CALDB/data/hess/$HESSVERSION/"+dstprod+"/"+analysis_name
-    indir= os.path.expandvars('$CALDB')+"/"+dstprod+'/'+analysis_name
+    indir= os.path.expandvars('$CALDB')+"/data/hess/"+os.path.expandvars('$HESSVERSION')+"/"+dstprod+'/'+analysis_name
     make_checkrun(observation_list, indir, "old","missig_file_"+analysis_name+".txt")
     
