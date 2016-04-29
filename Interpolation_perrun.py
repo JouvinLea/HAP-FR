@@ -11,9 +11,10 @@ from glob import glob
 
 """
 Script that interpolates the area, edisp and the psf on the zenith and muon efficiency of each run.
-You have to give the configuration, the analysis name, the run number and the dst prod
+You have to give the analysis name, the run number and the dst prod
 """
-#./Interpolation_perrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm_north_stereo_Prod15_5' 23526 "Prod15_4_stereo" 
+#./Interpolation_perrun.py 'elm_north_stereo_Prod15_5' 23526 "Prod15_4_stereo"
+
 
 
 class Observation:
@@ -92,10 +93,11 @@ def gauss(x,sigma, mean):
 PathTableIRF=os.path.expandvars('$HESSCONFIG')
 PathTablePSF=os.path.expandvars('$HESSCONFIG')
 
-PathListRun = sys.argv[1]
-config=sys.argv[2]
-nrun=sys.argv[3]
-dstprod=sys.argv[4]
+
+config=sys.argv[1]
+nrun=sys.argv[2]
+dstprod=sys.argv[3]
+PathListRun = os.path.expandvars('$CALDB')+"/"+dstprod+'/'+config
 
 obs = Observation(int(nrun))
 informat="old"
