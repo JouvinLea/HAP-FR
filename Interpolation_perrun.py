@@ -10,8 +10,10 @@ import os
 from glob import glob
 from pathlib import Path
 import os 
+
 """
-Commande a lancer pour pouvoir donner des arguments au scripts
+Script that interpolates the area, edisp and the psf on the zenith and muon efficiency of each run.
+You have to give the configuration, the prod and the run number
 """
 #./Interpolation_perrun.py '/Users/jouvin/Desktop/these/FITS_DATA/HAP-FR/Prod15_4_stereo/elm_south_stereo_Prod15_5' 'elm_stereo' 'Prod15_5' 23526
 
@@ -124,8 +126,7 @@ def gauss(x,sigma, mean):
 
 PathListRun = sys.argv[1]
 
-
-#Load les info sur les MCs depuis la table d'IRF ou est stocke pour toutes les nergies, zenith,offset et efficacite des MCs la valeur des la surface efficiace, du biais et sigma pour la resolution et du s1, s2, s3, A2, A3 de la tripplegauss utilisee pour fitter la psf
+#Load the MCs information from the IRF table where is stored for each MC energy, zenith, offset and efficiency, the value of the surface area, the biais and the sigma for the resolution and the s1,s2,s3,A2, A3 for the tripple gauss used to fit the PSF
 PathTableIRF="/Users/jouvin/Desktop/these/WorkGAMMAPI/IRF/Brunoconfig/output_4Dnumpyarrays"
 PathTablePSF="/Users/jouvin/Desktop/these/WorkGAMMAPI/IRF/Brunoconfig/output_4Dnumpyarrays"
 
@@ -173,17 +174,15 @@ else:
     bineffarea=len(offMC)*len(enMC)
     bineffresol=len(offMC)*len(enMC)*binEreco
 
-    #reverifier qu ils ont bien ca dans leur bin PA en low edge et upper edge
     off_low=offMC
     off_hi=offMC
 
-    #pour les extremites prendre le milieu des bin en log
+    #Define Etrue low and up in log
     binlnEMC=lnenMC[1:]-lnenMC[:-1]
-    #Pour le premier bin en energie pour defenr le edge low du bin on prend la demilargeur du premier bin
+    #For the first bin in order to define the low edge we take the width of the first bin
     binlnEMClow=np.insert(binlnEMC,0,binlnEMC[0])
-    #Pour le dernier bin en energie pour defenr le edge up du bin on prend la demilargeur du dernier bin
+    #For the last bin in order to define the up edge we take the width of the last bin
     binlnEMCup=np.insert(binlnEMC,-1,binlnEMC[-1])
-    #Retrouver
     lnEMClow=lnenMC-binlnEMClow/2
     lnEMCup=lnenMC+binlnEMCup/2
     E_true_low=pow(10,lnEMClow)
@@ -191,7 +190,7 @@ else:
 
     #Definition de Etrue/Ereco
     lnEtrue_reco=np.linspace(-1,1,binEreco)
-    #Le tableau d energie reco en log ont tous la meme largeur de bin donc on prend le premier
+    #For each bin in log the width is the same so we take the width f the first bi
     binlnEtrue_reco=lnEtrue_reco[1]-lnEtrue_reco[0]
     lnE_true_reco_low=lnEtrue_reco-binlnEtrue_reco/2
     lnE_true_reco_up=lnEtrue_reco+binlnEtrue_reco/2
@@ -210,7 +209,6 @@ else:
 
     for (iEMC,EMC) in enumerate(enMC):
         for (ioff, off) in enumerate(offMC):
-            #print ioff, " ", iEMC
             InterArea=interpolate.interp2d(effMC,np.cos(zenMC*math.pi/180),IRFArea[iEMC,ioff,:,:])
             InterBiais=interpolate.interp2d(effMC,np.cos(zenMC*math.pi/180),IRFBiais[iEMC, ioff,:,:])
             InterSigma=interpolate.interp2d(effMC,np.cos(zenMC*math.pi/180),IRFSigma[iEMC, ioff,:,:])
@@ -218,7 +216,7 @@ else:
             BiaisRun=InterBiais(EffRun,np.cos(ZenRun*math.pi/180))
             SigmaRun=InterSigma(EffRun,np.cos(ZenRun*math.pi/180))
             ResolRun[ioff, : ,iEMC]=gauss(lnEtrue_reco,SigmaRun,BiaisRun)
-            #etre sur que c est bien normalise
+            #Resolution is normalized
             norm=np.sum(ResolRun[ioff, : ,iEMC]*(E_true_reco_hi-E_true_reco_low))            
 
             if(np.isnan(norm)):
@@ -233,7 +231,7 @@ else:
             if(len(ind_zen)!=0):
                 zensame=np.where(ind_zen != ind_zen[0])
                 effsame=np.where(ind_eff != ind_eff[0])
-                #Il doit y avoir au moins 2 valeurs differentes en efficacite et en zenith pour que l interpolateur marche
+                #In order for the interpolation to work, you have to have at least two values in efficiency and zenith
                 if((len(zensame[0])!=0) & (len(effsame[0])!=0)):
                     coord_eff=effMC[ind_eff]
                     coord_zen = zenMC[ind_zen]
@@ -273,9 +271,11 @@ else:
                 PSFA3Run[ioff, iEMC] = -1
 
 
-
-    outdir =  str(Path(PathListRun) / obs.folder())            
-    #Ecriture des fichiers fits pour aeff, edisp et psf pour chaque observation
+    """
+    Writing the fits file for aeff, edisp and psf for the given observation
+    """
+    outdir =  str(Path(PathListRun) / obs.folder())
+    
     #AEFF FITS FILE
     c1_area = Column(name='ENERG_LO', format=str(binEMC)+'E', unit='TeV', array=np.atleast_2d(E_true_low))
     c2_area = Column(name='ENERG_HI', format=str(binEMC)+'E', unit='TeV', array=np.atleast_2d(E_true_up))
@@ -296,11 +296,6 @@ else:
     tbhdu_area.header.set("HI_THRES",-1,"TeV")
     #tbhdu_area.header["EXTNAME"]='EFFECTIVE AREA'
     tbhdu_area.writeto(outdir + '/aeff_2d_0'+str(int(nrun))+'.fits', clobber=True)
-    if Path(outdir + '/hess_aeff_2d_'+str(int(nrun))+'.fits').exists():
-        os.remove(outdir + '/hess_aeff_2d_'+str(int(nrun))+'.fits') 
-    if Path(outdir + '/hess_aeff_2d_0'+str(int(nrun))+'.fits').exists():
-        os.remove(outdir + '/hess_aeff_2d_0'+str(int(nrun))+'.fits')
-    import IPython; IPython.embed()
     #EDISP FITS FILE
     c1_resol = Column(name='ETRUE_LO', format=str(binEMC)+'E', unit='TeV', array=np.atleast_2d(E_true_low))
     c2_resol = Column(name='ETRUE_HI', format=str(binEMC)+'E', unit='TeV', array=np.atleast_2d(E_true_up))
@@ -313,16 +308,10 @@ else:
     for i in range(1,8):
         tbhdu_resol.header.comments['TTYPE'+str(i)]='label for field '+str(i)
         tbhdu_resol.header.comments['TFORM'+str(i)]='data format of field: 4-byte REAL'
-    #        tbhdu_resol.header.comments['TUNIT'+str(i)]='physical unit of field '
-
     tbhdu_resol.header.set("EXTNAME","EDISP_2D", "name of this binary table extension ")
     tbhdu_resol.header.set("TDIM7","("+str(binEMC)+","+str(binEreco)+","+str(binoffMC)+")")
-    #tbhdu_resol.header["EXTNAME"]='EFFECTIVE RESOL'
     tbhdu_resol.writeto(outdir +'/edisp_2d_0'+str(int(nrun))+'.fits', clobber=True)
-    if Path(outdir + '/hess_edisp_2d_'+str(int(nrun))+'.fits').exists():
-        os.remove(outdir +'/hess_edisp_2d_'+str(int(nrun))+'.fits')
-    if Path(outdir + '/hess_edisp_2d_0'+str(int(nrun))+'.fits').exists():
-        os.remove(outdir +'/hess_edisp_2d_0'+str(int(nrun))+'.fits')
+    
     #PSF FITS FILE
     c1_psf = Column(name='ENERG_LO', format=str(binEMC)+'E', unit='TeV', array=np.atleast_2d(E_true_low))
     c2_psf = Column(name='ENERG_HI', format=str(binEMC)+'E', unit='TeV', array=np.atleast_2d(E_true_up))
@@ -339,7 +328,4 @@ else:
     tbhdu_psf = pyfits.BinTableHDU.from_columns([c1_psf, c2_psf, c3_psf, c4_psf, c5_psf, c6_psf, c7_psf, c8_psf, c9_psf, c10_psf]) 
     tbhdu_psf.header.set("EXTNAME","PSF_2D", "name of this binary table extension ")
     tbhdu_psf.writeto(outdir + '/psf_3gauss_0'+str(int(nrun))+'.fits', clobber=True)
-    if Path(outdir + '/hess_psf_3gauss_'+str(int(nrun))+'.fits').exists():
-        os.remove(outdir + '/hess_psf_3gauss_'+str(int(nrun))+'.fits')
-    if Path(outdir + '/hess_psf_3gauss_0'+str(int(nrun))+'.fits').exists():
-        os.remove(outdir + '/hess_psf_3gauss_0'+str(int(nrun))+'.fits')
+    
