@@ -130,8 +130,8 @@ PathListRun = sys.argv[1]
 RunNumber = np.loadtxt("Crab_test.list")
 
 #Load les info sur les MCs depuis la table d'IRF ou est stocke pour toutes les nergies, zenith,offset et efficacite des MCs la valeur des la surface efficiace, du biais et sigma pour la resolution et du s1, s2, s3, A2, A3 de la tripplegauss utilisee pour fitter la psf
-PathTableIRF="/Users/jouvin/Desktop/these/WorkGAMMAPI/IRF/Brunoconfig/output_4Dnumpyarrays"
-PathTablePSF="/Users/jouvin/Desktop/these/WorkGAMMAPI/IRF/Brunoconfig/output_4Dnumpyarrays"
+PathTableIRF=os.path.expandvars('$HESSCONFIG')
+PathTablePSF=os.path.expandvars('$HESSCONFIG')
 
 coupure=sys.argv[2]
 prod =sys.argv[3]
@@ -153,7 +153,8 @@ for nrun in RunNumber[:,0]:
         mode="north"
     ZenRun=90-AltRun
     EffRun=hdurun[1].header["MUONEFF"]*100
-    IRF=np.load(PathTableIRF+"/IRF_"+coupure[0:3]+"_"+mode+"_"+coupure[4:10]+"_"+prod+".npz")
+    name_config=coupure[0:3]+"_"+mode+"_"+coupure[4:10]+"_"+prod
+    IRF=np.load(PathTableIRF+"/"+name_config+"/IRF_"+name_config+".npz")
     IRFArea=IRF["TableArea"]
     IRFSigma=IRF["TableSigma"]
     IRFBiais=IRF["TableBiais"]
@@ -163,7 +164,7 @@ for nrun in RunNumber[:,0]:
     effMC=IRF["effMC"]
     offMC=IRF["offMC"]
     
-    PSF=np.load(PathTablePSF+"/PSF_triplegauss_"+coupure[0:3]+"_"+mode+"_"+coupure[4:10]+"_"+prod+".npz")
+    PSF=np.load(PathTablePSF+"/"+name_config+"/PSF_triplegauss_"+name_config+".npz")
     PSFs1=PSF["TableSigma1"]
     PSFs2=PSF["TableSigma2"]
     PSFs3=PSF["TableSigma3"]
